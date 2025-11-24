@@ -1,13 +1,13 @@
 # Beli Buzz MVP
 
-Daily food-intel map for Toronto. A lightweight Python pipeline scrapes Reddit + curated critics once per day, analyzes the chatter with Gemini Flash, pushes a JSON snapshot to S3, and a Vite/React front-end renders the hotspots on Google Maps (hosted for free on Cloudflare Pages).
+Daily food-intel map for Toronto. A lightweight Python pipeline scrapes Reddit + curated critics once per day, analyzes the chatter with LLM, pushes a JSON snapshot to S3, and a Vite/React front-end renders the hotspots on Google Maps (hosted for free on Cloudflare Pages).
 
 ## Architecture
 
 | Layer | Stack | Notes |
 | --- | --- | --- |
 | Scrapers | Python, PRAW, feedparser | Reddit hot posts (last 24h) + curated RSS (Dickison, Karon Liu, Toronto Life). |
-| Intelligence | Gemini Flash 1.5 (fallback Hugging Face) | Prompt extracts restaurant name, sentiment, summary. Keyword heuristic for fully offline dev. |
+| Intelligence | HuggingFace | Prompt extracts restaurant name, sentiment, summary. Keyword heuristic for fully offline dev. |
 | Geocoding | Google Places Text Search via `googlemaps` | Cached per-name JSON (`backend/geocode_cache.json`). |
 | Storage | JSON artifact in `frontend/public/data.json` locally, `s3://beli-buzz-data/latest.json` remotely (public-read). |
 | Delivery | AWS Lambda + EventBridge Cron (6am ET). Zip `backend/` & dependencies via `pip install -t`. |
