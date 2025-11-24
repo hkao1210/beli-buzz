@@ -1,0 +1,8 @@
+praw
+requests
+python-dotenv
+boto3
+googlemaps
+huggingface_hub
+google-generativeai
+feedparser

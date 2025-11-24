@@ -1,0 +1,47 @@
+{
+  "date": "2025-11-24T10:00:00-05:00",
+  "restaurants": [
+    {
+      "id": "pai-northern-thai-kitchen",
+      "name": "Pai Northern Thai Kitchen",
+      "buzz_score": 14.2,
+      "sentiment": 9.2,
+      "mentions": 5,
+      "summary": "Khao soi special keeps Toronto's downtown crowd lined up.",
+      "sources": ["Reddit", "Toronto Life"],
+      "location": {
+        "lat": 43.6479,
+        "lng": -79.3887,
+        "address": "18 Duncan St, Toronto, ON M5H 3G8"
+      }
+    },
+    {
+      "id": "seven-lives-tacos",
+      "name": "Seven Lives Tacos",
+      "buzz_score": 12.7,
+      "sentiment": 9.7,
+      "mentions": 3,
+      "summary": "Baja-style fish tacos still rule Kensington Market.",
+      "sources": ["Reddit"],
+      "location": {
+        "lat": 43.6543,
+        "lng": -79.4005,
+        "address": "69 Kensington Ave, Toronto, ON M5T 2K2"
+      }
+    },
+    {
+      "id": "the-burgers-priest",
+      "name": "The Burger's Priest",
+      "buzz_score": 11.5,
+      "sentiment": 8.5,
+      "mentions": 3,
+      "summary": "Secret-menu double doubles spark another smashburger wave.",
+      "sources": ["Reddit", "Mock: Liu"],
+      "location": {
+        "lat": 43.6667,
+        "lng": -79.3156,
+        "address": "1636 Queen St E, Toronto, ON M4L 1G3"
+      }
+    }
+  ]
+}
