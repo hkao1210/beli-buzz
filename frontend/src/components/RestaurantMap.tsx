@@ -4,8 +4,8 @@ import type { Restaurant } from '@/types';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
-// NYC center as default
-const DEFAULT_CENTER = { lat: 40.7128, lng: -74.006 };
+// Toronto center as default
+const DEFAULT_CENTER = { lat: 43.6532, lng: -79.3832 };
 const DEFAULT_ZOOM = 13;
 
 interface RestaurantMapProps {
