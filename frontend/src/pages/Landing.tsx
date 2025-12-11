@@ -42,7 +42,7 @@ export function Landing() {
             <div className="mb-4 inline-flex items-center gap-3 rounded-base border-2 border-border bg-main px-4 py-2 shadow-shadow">
               <Utensils className="h-8 w-8" />
               <span className="text-3xl font-heading font-black tracking-tight">
-                BELI-BUZZ
+                BELLY-BUZZ
               </span>
             </div>
             <h1 className="mt-8 text-4xl font-heading font-black tracking-tight sm:text-6xl">

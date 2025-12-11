@@ -1,5 +1,5 @@
 -- =============================================================================
--- Beli-Buzz Database Schema for Supabase
+-- Belly-Buzz Database Schema for Supabase
 -- =============================================================================
 -- Run this in the Supabase SQL Editor to set up your database.
 -- Requires pgvector extension.

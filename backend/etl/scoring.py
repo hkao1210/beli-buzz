@@ -197,7 +197,7 @@ def calculate_buzz_score(
     google_rating: Optional[float] = None,
 ) -> float:
     """
-    Calculate the overall Beli Buzz Score.
+    Calculate the overall Belly Buzz Score.
     
     Buzz Score (0-20) combines all factors:
     - Sentiment analysis

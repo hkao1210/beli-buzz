@@ -49,7 +49,7 @@ FOOD_KEYWORDS = [
 
 BASE_URL = "https://old.reddit.com"
 HEADERS = {
-    "User-Agent": "BeliBuzz/1.0 (Toronto food recommendation app)"
+    "User-Agent": "BellyBuzz/1.0 (Toronto food recommendation app)"
 }
 
 

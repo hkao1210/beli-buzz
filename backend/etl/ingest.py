@@ -469,7 +469,7 @@ async def main():
     """Main entry point for the ingestion pipeline."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Beli-Buzz Ingestion Pipeline")
+    parser = argparse.ArgumentParser(description="Belly-Buzz Ingestion Pipeline")
     parser.add_argument("--no-reddit", action="store_true", help="Skip Reddit scraping")
     parser.add_argument("--no-blogs", action="store_true", help="Skip blog scraping")
     parser.add_argument("--time-filter", default="month", choices=["hour", "day", "week", "month", "year", "all"])
