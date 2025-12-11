@@ -1,2 +1,2 @@
-"""Beli-Buzz LLM Module."""
+"""Belly-Buzz LLM Module."""
 

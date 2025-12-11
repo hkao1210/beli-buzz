@@ -1,4 +1,4 @@
-# Beli-Buzz 🍜
+# Belly-Buzz 🍜
 
 AI-powered Toronto restaurant discovery based on real conversations from Reddit and food blogs.
 
@@ -7,18 +7,12 @@ AI-powered Toronto restaurant discovery based on real conversations from Reddit 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           OFFLINE ETL PIPELINE                               │
-│                        (Runs every X hours via cron)                         │
+│                        (Runs daily via cron)                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │
 │  │   SCRAPE     │───▶│   EXTRACT    │───▶│   ENRICH     │───▶│ VECTORIZE  │ │
-│  │ Reddit/Blogs │    │  LLM (Groq)  │    │ Google Maps  │    │ Embeddings │ │
-│  └──────────────┘    └──────────────┘    └──────────────┘    └────────────┘ │
-│         │                   │                   │                   │        │
-│         ▼                   ▼                   ▼                   ▼        │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │
-│  │  Raw Posts   │    │ Restaurants  │    │   Address,   │    │  384-dim   │ │
-│  │  & Comments  │    │ + Sentiment  │    │   Coords     │    │  Vectors   │ │
+│  │ Reddit/Blogs │    │  LLM (Groq)  │    │ Google Maps  │    │  OpenAI    │ │
 │  └──────────────┘    └──────────────┘    └──────────────┘    └────────────┘ │
 │                                                                      │       │
 │                              ┌────────────────────────────────┐      │       │
@@ -35,14 +29,8 @@ AI-powered Toronto restaurant discovery based on real conversations from Reddit 
 │                                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │
 │  │   Frontend   │───▶│   FastAPI    │───▶│  Embed Query │───▶│  Vector    │ │
-│  │   (React)    │    │   Server     │    │              │    │  Search    │ │
+│  │   (React)    │    │   Server     │    │   (OpenAI)   │    │  Search    │ │
 │  └──────────────┘    └──────────────┘    └──────────────┘    └────────────┘ │
-│                              │                                       │       │
-│                              ▼                                       ▼       │
-│                      ┌──────────────┐                        ┌────────────┐ │
-│                      │   Filters &  │                        │  Supabase  │ │
-│                      │   Sorting    │                        │  pgvector  │ │
-│                      └──────────────┘                        └────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,61 +38,56 @@ AI-powered Toronto restaurant discovery based on real conversations from Reddit 
 
 - **Semantic Search**: Find restaurants using natural language ("best date night ramen spot")
 - **Buzz Score**: AI-calculated score based on social engagement and sentiment
-- **Real Data**: Scraped from Reddit (r/askTO, r/FoodToronto) and food blogs (BlogTO, Eater Toronto)
-- **Vector Search**: pgvector-powered similarity search for relevant results
+- **Real Data**: Scraped from Reddit (r/askTO, r/FoodToronto) and food blogs
+- **Vector Search**: pgvector-powered similarity search with OpenAI embeddings
 - **Google Maps Integration**: Verified location data and interactive map view
 
 ## Tech Stack
 
 ### Backend
-- **FastAPI** - Modern Python API framework
+- **FastAPI** - Python API framework
 - **Supabase** - PostgreSQL database with pgvector extension
 - **Groq** - LLM API (Llama 3.1) for entity extraction and sentiment analysis
-- **Sentence Transformers** - Local embeddings (all-MiniLM-L6-v2)
-- **PRAW** - Reddit API wrapper
-- **Crawl4AI** - Web scraping for food blogs
+- **OpenAI** - Embeddings API (text-embedding-3-small)
 - **Google Maps API** - Location enrichment
 
 ### Frontend
 - **React 19** + **TypeScript**
 - **Vite** - Build tool
 - **TanStack Query** - Data fetching and caching
-- **vis.gl/react-google-maps** - Google Maps integration
-- **Tailwind CSS** - Styling with Neobrutalism theme
+- **Google Maps** - Interactive map
+- **Tailwind CSS** - Styling
 
 ## Project Structure
 
 ```
-beli-buzz/
+belly-buzz/
 ├── backend/
-│   ├── main.py              # FastAPI application (Day Shift)
-│   ├── ingest.py            # ETL pipeline (Night Shift)
-│   ├── models.py            # Pydantic data models
-│   ├── schemas.py           # API schemas
-│   ├── scoring.py           # Buzz/Viral/Sentiment scoring
-│   ├── enrichment.py        # Google Places enrichment
+│   ├── api/
+│   │   ├── main.py           # FastAPI application
+│   │   └── schemas.py        # API schemas
+│   ├── etl/
+│   │   ├── ingest.py         # ETL pipeline entry point
+│   │   ├── scoring.py        # Buzz/Viral/Sentiment scoring
+│   │   ├── enrichment.py     # Google Places enrichment
+│   │   ├── scrapers/
+│   │   │   ├── reddit.py     # Reddit scraper
+│   │   │   └── blogs.py      # Blog scraper
+│   │   └── llm/
+│   │       └── extractor.py  # LLM entity extraction
+│   ├── models/               # Shared Pydantic models
+│   ├── embeddings.py         # OpenAI embeddings (shared)
 │   ├── database/
-│   │   └── schema.sql       # Supabase database schema
-│   ├── scrapers/
-│   │   ├── reddit.py        # Reddit scraper (PRAW)
-│   │   └── blogs.py         # Blog scraper (Crawl4AI)
-│   └── llm/
-│       ├── extractor.py     # LLM entity extraction
-│       └── embeddings.py    # Vector embeddings
+│   │   └── schema.sql        # Supabase database schema
+│   ├── Dockerfile
+│   ├── render.yaml           # Render deployment config
+│   └── requirements.txt
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── RestaurantCard.tsx
-│   │   │   └── RestaurantMap.tsx
-│   │   ├── pages/
-│   │   │   ├── Landing.tsx
-│   │   │   └── Search.tsx
-│   │   ├── hooks/
-│   │   │   └── useRestaurants.ts
-│   │   └── types/
-│   │       └── restaurant.ts
-│   └── public/
-│       └── data.json        # Static fallback data
+│   └── src/
+│       ├── components/
+│       ├── pages/
+│       ├── hooks/
+│       └── types/
 └── README.md
 ```
 
@@ -112,29 +95,20 @@ beli-buzz/
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - Node.js 18+
 - pnpm
 - Supabase account
-- API Keys: Google Maps, Groq, Reddit
+- API Keys: Google Maps, Groq, OpenAI
 
-### 1. Database Setup (Supabase)
-
-1. Create a new Supabase project
-2. Go to SQL Editor and run the schema:
-
-```sql
--- Run backend/database/schema.sql in Supabase SQL Editor
-```
-
-### 2. Backend Setup
+### Backend Setup
 
 ```bash
 cd backend
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -144,38 +118,23 @@ cp .env.example .env
 # Edit .env with your API keys
 
 # Run the API server
-uvicorn main:app --reload --port 8000
+uvicorn api.main:app --reload --port 8000
 ```
 
-### 3. Frontend Setup
+### Frontend Setup
 
 ```bash
 cd frontend
-
-# Install dependencies
 pnpm install
-
-# Copy environment file (create .env with these values)
-# VITE_API_URL=http://localhost:8000
-# VITE_GOOGLE_MAPS_API_KEY=your-key
-
-# Run development server
 pnpm dev
 ```
 
-### 4. Run the Ingestion Pipeline (Optional)
-
-To populate real data from Reddit and blogs:
+### Run ETL Pipeline
 
 ```bash
 cd backend
 source venv/bin/activate
-
-# Run full pipeline
-python ingest.py
-
-# Or with options
-python ingest.py --no-blogs --time-filter week --limit 30
+python -m etl.ingest
 ```
 
 ## Environment Variables
@@ -190,16 +149,11 @@ SUPABASE_SECRET_KEY=your-service-role-key
 # Google Maps
 GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 
-# Groq (LLM)
+# Groq (LLM for ETL)
 GROQ_API_KEY=your-groq-api-key
 
-# Reddit
-REDDIT_CLIENT_ID=your-reddit-client-id
-REDDIT_CLIENT_SECRET=your-reddit-client-secret
-REDDIT_USER_AGENT=BeliBuzz/1.0
-
-# App
-CITY=Toronto
+# OpenAI (Embeddings)
+OPENAI_API_KEY=your-openai-api-key
 ```
 
 ### Frontend (.env)
@@ -217,14 +171,12 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 | GET | `/search` | Search restaurants with semantic similarity |
 | GET | `/restaurants/{id}` | Get single restaurant |
 | GET | `/trending` | Get trending restaurants |
-| GET | `/trending-queries` | Get popular search queries |
-| GET | `/neighborhoods` | List neighborhoods |
 | GET | `/cuisines` | List cuisine types |
 
 ### Search Parameters
 
 ```
-GET /search?q=best%20ramen&price_min=1&price_max=3&sort_by=buzz_score&sort_order=desc
+GET /search?q=best%20ramen&price_min=1&price_max=3&sort_by=buzz_score
 ```
 
 | Param | Type | Description |
@@ -233,65 +185,36 @@ GET /search?q=best%20ramen&price_min=1&price_max=3&sort_by=buzz_score&sort_order
 | `price_min` | 1-4 | Minimum price tier |
 | `price_max` | 1-4 | Maximum price tier |
 | `cuisine` | string[] | Filter by cuisine tags |
-| `neighborhood` | string | Filter by neighborhood |
-| `sort_by` | enum | buzz_score, sentiment_score, viral_score, rating, price_tier |
+| `sort_by` | enum | buzz_score, sentiment_score, viral_score, rating |
 | `sort_order` | enum | asc, desc |
-
-## Scoring System
-
-### Buzz Score (0-20)
-Overall score combining:
-- 35% Sentiment Score
-- 25% Viral Score  
-- 20% Mention Count
-- 10% Professional Reviews
-- 10% Google Rating
-
-### Sentiment Score (0-10)
-Average sentiment from LLM analysis of mentions, weighted by source credibility.
-
-### Viral Score (0-10)
-Social engagement based on:
-- Reddit upvotes (logarithmic)
-- Comment count
-- Recency (30-day decay)
-- Engagement rate
-
-## Development
-
-### Running Tests
-
-```bash
-# Backend
-cd backend
-pytest
-
-# Frontend
-cd frontend
-pnpm test
-```
-
-### Adding New Sources
-
-1. Create scraper in `backend/scrapers/`
-2. Add to `TORONTO_BLOG_URLS` or similar config
-3. Implement `scrape_` method returning `ScrapedContent`
 
 ## Deployment
 
-### Backend (Railway/Render)
+### Render (recommended)
+
+The `render.yaml` file configures both services:
+
+- **API**: Web service running FastAPI
+- **ETL**: Cron job running daily at 6 AM UTC
+
 ```bash
-# Procfile
-web: uvicorn main:app --host 0.0.0.0 --port $PORT
+# Deploy via Render Dashboard or CLI
+render blueprint apply
 ```
 
-### Frontend (Vercel/Netlify)
-```bash
-# Build command
-pnpm build
+### Manual Docker
 
-# Output directory
-dist
+```bash
+cd backend
+
+# Build
+docker build -t belly-buzz .
+
+# Run API
+docker run -p 8000:8000 --env-file .env belly-buzz
+
+# Run ETL
+docker run --env-file .env belly-buzz python -m etl.ingest
 ```
 
 ## License

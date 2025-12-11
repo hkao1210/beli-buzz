@@ -1,5 +1,5 @@
 /**
- * Utility functions for Beli-Buzz.
+ * Utility functions for Belly-Buzz.
  */
 
 /**

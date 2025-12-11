@@ -1,4 +1,4 @@
-"""Enumeration types for Beli-Buzz."""
+"""Enumeration types for Belly-Buzz."""
 
 from enum import Enum
 

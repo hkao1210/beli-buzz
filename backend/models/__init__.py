@@ -1,6 +1,6 @@
 """
-Beli-Buzz Data Models
-=====================
+Belly-Buzz Data Models
+======================
 Pydantic models for the ETL pipeline and API.
 """
 

@@ -1,6 +1,6 @@
 """
-Beli-Buzz Ingestion Pipeline (The "Night Shift")
-================================================
+Belly-Buzz Ingestion Pipeline (The "Night Shift")
+=================================================
 Complete ETL pipeline for restaurant data.
 
 Runs as a scheduled job (e.g., GitHub Actions cron).

@@ -1,6 +1,6 @@
 """
-Beli-Buzz Scoring Engine
-========================
+Belly-Buzz Scoring Engine
+=========================
 Calculates Buzz Score, Viral Score, and Sentiment Score for restaurants.
 """
 

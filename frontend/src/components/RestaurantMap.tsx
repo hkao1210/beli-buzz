@@ -52,7 +52,7 @@ export function RestaurantMap({
       <Map
         defaultCenter={center}
         defaultZoom={DEFAULT_ZOOM}
-        mapId="beli-buzz-map"
+        mapId="belly-buzz-map"
         className={className}
         gestureHandling="greedy"
         disableDefaultUI={false}

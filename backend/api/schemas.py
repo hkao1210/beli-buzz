@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Beli-Buzz API.
+Pydantic schemas for Belly-Buzz API.
 Re-exports from models for backwards compatibility.
 """
 
@@ -49,4 +49,3 @@ class HealthResponse(BaseModel):
     status: str
     message: str
     supabase_connected: bool
-    embedding_model_loaded: bool

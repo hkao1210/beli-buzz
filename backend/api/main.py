@@ -1,10 +1,10 @@
 """
-Beli-Buzz FastAPI Backend (The "Day Shift")
-============================================
+Belly-Buzz FastAPI Backend
+==========================
 Real-time API for restaurant search and discovery.
 
 Features:
-- Semantic search with vector similarity (pgvector)
+- Semantic search with OpenAI embeddings + pgvector
 - Filtering by price, cuisine
 - Sorting by buzz score, sentiment, rating
 - Trending restaurants endpoint
@@ -17,7 +17,6 @@ from enum import Enum
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -35,7 +34,7 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 CITY = os.getenv("CITY", "Toronto")
 
 # Global instances
-embedding_service: Optional[EmbeddingService] = None
+embedding_service: EmbeddingService = EmbeddingService()
 supabase_client: Optional[Client] = None
 
 
@@ -65,23 +64,19 @@ class SortOrder(str, Enum):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize resources on startup."""
-    global embedding_service, supabase_client
-    
-    # Load embedding model
-    print("Loading embedding model...")
-    embedding_service = EmbeddingService()
-    embedding_service.load()
-    print("Embedding model loaded!")
-    
+    global supabase_client
+
     # Initialize Supabase client
     if SUPABASE_URL and SUPABASE_SECRET_KEY:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
         print("Supabase client initialized!")
     else:
         print("Warning: Supabase credentials not set, using mock data")
-    
+
+    print("Belly-Buzz API ready!")
+
     yield
-    
+
     print("Shutting down...")
 
 
@@ -90,7 +85,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Beli-Buzz API",
+    title="Belly-Buzz API",
     description="AI-powered restaurant discovery with semantic search for Toronto",
     version="2.0.0",
     lifespan=lifespan,
@@ -509,9 +504,8 @@ async def root():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "message": f"Beli-Buzz API v2.0 - {CITY}",
+        "message": f"Belly-Buzz API v2.0 - {CITY}",
         "supabase_connected": supabase_client is not None,
-        "embedding_model_loaded": embedding_service is not None and embedding_service.model is not None,
     }
 
 

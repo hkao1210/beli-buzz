@@ -1,5 +1,5 @@
 [project]
-name = "beli-buzz"
+name = "belly-buzz"
 version = "0.1.0"
 description = "Toronto restaurant buzz tracker"
 requires-python = ">=3.9"

@@ -1,2 +1,2 @@
-"""Beli-Buzz Scrapers Module."""
+"""Belly-Buzz Scrapers Module."""
 
