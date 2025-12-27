@@ -2,13 +2,14 @@
 
 from datetime import datetime
 from typing import List, Optional, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .enums import SourceType, SentimentLabel
 
 
 class SocialMention(BaseModel):
     """Social mention record for database."""
+
     id: Optional[str] = None
     restaurant_id: Optional[str] = None
     restaurant_name: str
@@ -38,7 +39,38 @@ class SocialMention(BaseModel):
     posted_at: Optional[datetime] = None
     scraped_at: Optional[datetime] = None
 
+    model_config = {"extra": "ignore"}
 
+    @field_validator("reddit_score", "reddit_num_comments", mode="before")
+    @classmethod
+    def coerce_int(cls, v):
+        return int(v) if v is not None else 0
+
+    @field_validator("engagement_score", mode="before")
+    @classmethod
+    def coerce_float(cls, v):
+        return float(v) if v is not None else 0.0
+
+    @field_validator("posted_at", "scraped_at", mode="before")
+    @classmethod
+    def parse_datetime(cls, v):
+        if isinstance(v, str):
+            return datetime.fromisoformat(v.replace("Z", "+00:00"))
+        return v
+
+    @field_validator("dishes_mentioned", mode="before")
+    @classmethod
+    def coerce_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            # Handle JSON string from DB
+            import json
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
 class Restaurant(BaseModel):
     """Full restaurant record for database."""
     id: Optional[str] = None

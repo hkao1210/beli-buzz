@@ -64,32 +64,6 @@ class EmbeddingService:
             logger.error(f"OpenAI embedding failed: {e}")
             raise
 
-    def embed_texts(self, texts: List[str]) -> List[List[float]]:
-        """
-        Create embeddings for multiple texts in one API call.
-
-        Args:
-            texts: List of texts to embed
-
-        Returns:
-            List of embedding vectors
-        """
-        if not texts:
-            return []
-
-        # Clean empty texts
-        texts = [t if t.strip() else "restaurant" for t in texts]
-
-        try:
-            response = self._get_client().embeddings.create(
-                input=texts,
-                model=self.model,
-            )
-            return [item.embedding for item in response.data]
-        except Exception as e:
-            logger.error(f"OpenAI batch embedding failed: {e}")
-            raise
-
     def embed_restaurant(self, restaurant: Restaurant) -> List[float]:
         """
         Create searchable embedding from restaurant attributes.
@@ -181,7 +155,7 @@ def get_embedding_service() -> EmbeddingService:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    service = EmbeddingService()
+    service = get_embedding_service()
 
     # Test embeddings
     queries = [

@@ -244,35 +244,27 @@ def upsert_mention(
         logger.error(f"Failed to upsert mention: {e}")
         return False
 
-
 def get_mentions_for_restaurant(
     supabase: Client,
     restaurant_name: str,
 ) -> List[SocialMention]:
     """Get all mentions for a restaurant."""
     try:
-        result = supabase.table("social_mentions").select("*").eq("restaurant_name", restaurant_name).execute()
-        
-        mentions = []
-        for row in result.data:
-            mention = SocialMention(
-                restaurant_name=row["restaurant_name"],
-                source_type=row["source_type"],
-                source_url=row["source_url"],
-                raw_text=row.get("raw_text", ""),
-                reddit_score=row.get("reddit_score", 0),
-                reddit_num_comments=row.get("reddit_num_comments", 0),
-                sentiment_score=row.get("sentiment_score"),
-                sentiment_label=SentimentLabel(row["sentiment_label"]) if row.get("sentiment_label") else None,
-                posted_at=datetime.fromisoformat(row["posted_at"]) if row.get("posted_at") else None,
-            )
-            mentions.append(mention)
-        
-        return mentions
+        result = (
+            supabase.table("social_mentions")
+            .select("*")
+            .eq("restaurant_name", restaurant_name)
+            .execute()
+        )
+
+        if not result.data:
+            return []
+
+        return [SocialMention.model_validate(row) for row in result.data]
+
     except Exception as e:
         logger.error(f"Failed to get mentions for {restaurant_name}: {e}")
         return []
-
 
 # =============================================================================
 # MAIN PIPELINE
@@ -319,9 +311,7 @@ async def run_pipeline(
     if scrape_reddit:
         logger.info("Step 1a: Scraping Reddit...")
         reddit_scraper = RedditScraper()
-        # RedditScraper uses public JSON endpoints (no API key). Call scraper
-        # directly and handle failures — previous code expected a `reddit`
-        # attribute from a PRAW-based implementation which no longer exists.
+        # RedditScraper uses public JSON endpoints (no API key)
         try:
             reddit_content = reddit_scraper.scrape_all_toronto(
                 time_filter=time_filter,
@@ -336,13 +326,33 @@ async def run_pipeline(
     if scrape_blogs:
         logger.info("Step 1b: Scraping blogs...")
         blog_scraper = BlogScraper()
-        if blog_scraper.has_crawler:
-            blog_content = await blog_scraper.scrape_all_blogs()
-            all_content.extend(blog_content)
-            stats.scraped_blogs = len(blog_content)
-            logger.info(f"Scraped {len(blog_content)} blog pages")
-        else:
-            logger.warning("Blog scraper not available (install crawl4ai)")
+        try:
+            blog_content = blog_scraper.scrape_blogs(
+                limit_per_feed=limit_per_source,
+                days_back=30,
+                fetch_full_text=False,
+            )
+            # Convert blog scraper ScrapedContent to models ScrapedContent
+            converted_blog_content = [
+                ScrapedContent(
+                    source_type=item.source_type,
+                    source_url=item.source_url,
+                    source_id=item.source_id,
+                    title=item.title,
+                    raw_text=item.raw_text,
+                    subreddit=getattr(item, "subreddit", None),
+                    reddit_score=getattr(item, "reddit_score", None),
+                    reddit_num_comments=getattr(item, "reddit_num_comments", None),
+                    author=getattr(item, "author", None),
+                    posted_at=getattr(item, "posted_at", None),
+                )
+                for item in blog_content
+            ]
+            all_content.extend(converted_blog_content)
+            stats.scraped_blogs = len(converted_blog_content)
+            logger.info(f"Scraped {len(converted_blog_content)} blog pages")
+        except Exception as e:
+            logger.warning(f"Blog scraper failed: {e}")
     
     if not all_content:
         logger.warning("No content scraped, exiting")
@@ -364,24 +374,74 @@ async def run_pipeline(
             
             for extracted in restaurants:
                 # Create mention record
+                # Normalize and coerce types to match `models.database.SocialMention`
+                src_type = content.source_type
+                if isinstance(src_type, str):
+                    try:
+                        src_type = SourceType(src_type)
+                    except Exception:
+                        # leave as-is; pydantic will validate later
+                        pass
+
+                # Safely coerce numeric fields
+                try:
+                    reddit_score_val = int(content.reddit_score or 0)
+                except Exception:
+                    reddit_score_val = 0
+
+                try:
+                    reddit_comments_val = int(content.reddit_num_comments or 0)
+                except Exception:
+                    reddit_comments_val = 0
+
+                # Normalize sentiment fields
+                sentiment_score_val = None
+                sentiment_label_val = None
+                aspects_val = None
+                if sentiment:
+                    try:
+                        sentiment_score_val = float(sentiment.overall_score)
+                    except Exception:
+                        sentiment_score_val = None
+
+                    lbl = getattr(sentiment, "label", None)
+                    if isinstance(lbl, str):
+                        try:
+                            sentiment_label_val = SentimentLabel(lbl)
+                        except Exception:
+                            sentiment_label_val = None
+                    else:
+                        sentiment_label_val = lbl
+
+                    if isinstance(getattr(sentiment, "aspects", None), dict):
+                        aspects_val = sentiment.aspects
+
+                # Normalize posted_at
+                posted_at_val = content.posted_at
+                if isinstance(posted_at_val, str):
+                    try:
+                        posted_at_val = datetime.fromisoformat(posted_at_val)
+                    except Exception:
+                        posted_at_val = None
+
                 mention = SocialMention(
                     restaurant_name=extracted.name,
-                    source_type=content.source_type,
+                    source_type=src_type,
                     source_url=content.source_url,
                     source_id=content.source_id,
                     title=content.title,
                     raw_text=content.raw_text,
                     subreddit=content.subreddit,
-                    reddit_score=content.reddit_score or 0,
-                    reddit_num_comments=content.reddit_num_comments or 0,
+                    reddit_score=reddit_score_val,
+                    reddit_num_comments=reddit_comments_val,
                     author=content.author,
-                    sentiment_score=sentiment.overall_score if sentiment else None,
-                    sentiment_label=sentiment.label if sentiment else None,
-                    aspects=sentiment.aspects if sentiment else None,
-                    dishes_mentioned=extracted.recommended_dishes,
+                    sentiment_score=sentiment_score_val,
+                    sentiment_label=sentiment_label_val,
+                    aspects=aspects_val,
+                    dishes_mentioned=extracted.recommended_dishes or [],
                     price_mentioned=extracted.price_hint,
                     vibe_extracted=extracted.vibe,
-                    posted_at=content.posted_at,
+                    posted_at=posted_at_val,
                 )
                 
                 # Group by restaurant
@@ -449,7 +509,9 @@ async def run_pipeline(
                     
                     # Get restaurant ID for mentions
                     result = supabase.table("restaurants").select("id").eq("name", restaurant.name).execute()
-                    restaurant_id = result.data[0]["id"] if result.data else None
+                    rows = result.data if isinstance(result.data, list) else []
+                    first = rows[0] if rows and isinstance(rows[0], dict) else None
+                    restaurant_id = first.get("id") if first else None
                     
                     # Store mentions
                     for mention in mentions:

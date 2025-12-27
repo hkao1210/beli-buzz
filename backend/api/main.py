@@ -21,7 +21,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 
 from models import RestaurantResponse, SearchResponse, Review
-from embeddings import EmbeddingService
+from embeddings import EmbeddingService, get_embedding_service
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 CITY = os.getenv("CITY", "Toronto")
 
 # Global instances
-embedding_service: EmbeddingService = EmbeddingService()
+embedding_service: EmbeddingService = get_embedding_service()
 supabase_client: Optional[Client] = None
 
 

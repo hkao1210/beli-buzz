@@ -42,12 +42,8 @@ BUZZ_WEIGHTS = {
 
 # Source credibility scores
 SOURCE_CREDIBILITY = {
-    SourceType.EATER: 1.0,
-    SourceType.TORONTO_LIFE: 1.0,
-    SourceType.BLOGTO: 0.9,
-    SourceType.REDDIT: 0.7,
-    SourceType.INSTAGRAM: 0.6,
-    SourceType.MANUAL: 0.5,
+    SourceType.BLOG: 1.0,
+    SourceType.SOCIAL: 1.0,
 }
 
 
@@ -79,16 +75,26 @@ def calculate_viral_score(mentions: List[SocialMention]) -> float:
     for mention in mentions:
         mention_score = 0.0
         
+        # Coerce numeric fields safely
+        import math
+        try:
+            reddit_score_val = int(mention.reddit_score or 0)
+        except Exception:
+            reddit_score_val = 0
+
+        try:
+            reddit_comments_val = int(mention.reddit_num_comments or 0)
+        except Exception:
+            reddit_comments_val = 0
+
         # Reddit score component
-        if mention.reddit_score:
-            # Logarithmic scale: 100 upvotes = ~4.6, 1000 = ~6.9
-            import math
-            reddit_component = min(math.log1p(mention.reddit_score) / 2, 5)
+        if reddit_score_val:
+            reddit_component = min(math.log1p(reddit_score_val) / 2, 5)
             mention_score += reddit_component * VIRAL_WEIGHTS["reddit_score"]
-        
+
         # Comment component
-        if mention.reddit_num_comments:
-            comment_component = min(math.log1p(mention.reddit_num_comments) / 1.5, 5)
+        if reddit_comments_val:
+            comment_component = min(math.log1p(reddit_comments_val) / 1.5, 5)
             mention_score += comment_component * VIRAL_WEIGHTS["reddit_comments"]
         
         # Recency component (decay over 30 days)
@@ -98,8 +104,8 @@ def calculate_viral_score(mentions: List[SocialMention]) -> float:
             mention_score += recency_factor * 5 * VIRAL_WEIGHTS["recency"]
         
         # Engagement rate (comments per 100 upvotes)
-        if mention.reddit_score and mention.reddit_num_comments:
-            engagement = min(mention.reddit_num_comments / max(mention.reddit_score, 1) * 10, 5)
+        if reddit_score_val and reddit_comments_val:
+            engagement = min(reddit_comments_val / max(reddit_score_val, 1) * 10, 5)
             mention_score += engagement * VIRAL_WEIGHTS["engagement_rate"]
         
         total_score += mention_score
@@ -134,10 +140,17 @@ def calculate_sentiment_score(mentions: List[SocialMention]) -> float:
             continue
         
         # Get source credibility weight
+        # Normalize source type and lookup credibility
+        credibility = 0.5
         try:
-            source_type = SourceType(mention.source_type) if isinstance(mention.source_type, str) else mention.source_type
-            credibility = SOURCE_CREDIBILITY.get(source_type, 0.5)
-        except:
+            src = mention.source_type
+            if isinstance(src, str):
+                try:
+                    src = SourceType(src)
+                except Exception:
+                    src = None
+            credibility = SOURCE_CREDIBILITY.get(src, 0.5)
+        except Exception:
             credibility = 0.5
         
         # Convert -1 to 1 range to 0 to 10
@@ -165,11 +178,13 @@ def calculate_pro_score(mentions: List[SocialMention]) -> float:
     Returns:
         Pro score from 0 to 10
     """
-    pro_sources = {SourceType.EATER, SourceType.BLOGTO, SourceType.TORONTO_LIFE}
-    
+    # Treat blog sources as "professional" for now
+    pro_sources = {SourceType.BLOG}
+
     pro_mentions = [
-        m for m in mentions 
-        if m.source_type in pro_sources or (isinstance(m.source_type, str) and m.source_type in [s.value for s in pro_sources])
+        m for m in mentions
+        if (isinstance(m.source_type, SourceType) and m.source_type in pro_sources)
+        or (isinstance(m.source_type, str) and m.source_type.lower() in {s.value for s in pro_sources})
     ]
     
     if not pro_mentions:
@@ -322,7 +337,7 @@ if __name__ == "__main__":
     mock_mentions = [
         SocialMention(
             restaurant_name="Pai Northern Thai",
-            source_type=SourceType.REDDIT,
+            source_type=SourceType.SOCIAL,
             source_url="https://reddit.com/test1",
             raw_text="Amazing khao soi!",
             reddit_score=150,
@@ -333,7 +348,7 @@ if __name__ == "__main__":
         ),
         SocialMention(
             restaurant_name="Pai Northern Thai",
-            source_type=SourceType.BLOGTO,
+            source_type=SourceType.BLOG,
             source_url="https://blogto.com/test",
             raw_text="Best Thai in Toronto",
             sentiment_score=0.9,

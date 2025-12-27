@@ -22,9 +22,8 @@ logger = logging.getLogger(__name__)
 TORONTO_SUBREDDITS = [
     "askTO",
     "toronto",
-    "FoodToronto",
-    "TorontoFood",
-]
+    "FoodToronto"
+    ]
 
 # Search keywords to find restaurant discussions
 FOOD_KEYWORDS = [
@@ -91,8 +90,8 @@ class RedditScraper:
         raw_text = "\n\n".join(text_parts)
 
         return ScrapedContent(
-            source_type=SourceType.REDDIT,
-            source_url=f"https://reddit.com{data.get('permalink', '')}",
+            source_type=SourceType.SOCIAL,
+            source_url=f"https://old.reddit.com{data.get('permalink', '')}",
             source_id=data.get("id", ""),
             title=data.get("title", ""),
             raw_text=raw_text,
