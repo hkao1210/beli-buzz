@@ -20,8 +20,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-from models import RestaurantResponse, SearchResponse, Review
+from shared.models import RestaurantResponse, SearchResponse, Review
 from embeddings import EmbeddingService, get_embedding_service
+from db import set_supabase_client
 
 load_dotenv()
 
@@ -64,21 +65,16 @@ class SortOrder(str, Enum):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize resources on startup."""
-    global supabase_client
-
-    # Initialize Supabase client
     if SUPABASE_URL and SUPABASE_SECRET_KEY:
-        supabase_client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+        client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+        set_supabase_client(client)  # Share globally
         print("Supabase client initialized!")
     else:
-        print("Warning: Supabase credentials not set, using mock data")
+        print("Warning: Supabase credentials not set")
 
     print("Belly-Buzz API ready!")
-
     yield
-
     print("Shutting down...")
-
 
 # =============================================================================
 # APP
@@ -106,224 +102,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# =============================================================================
-# MOCK DATA (used when Supabase not configured)
-# =============================================================================
-
-MOCK_RESTAURANTS: List[RestaurantResponse] = [
-    RestaurantResponse(
-        id="pai-northern-thai-kitchen",
-        name="Pai Northern Thai Kitchen",
-        slug="pai-northern-thai-kitchen",
-        address="18 Duncan St, Toronto, ON M5H 3G8",
-        latitude=43.6479,
-        longitude=-79.3887,
-        google_place_id="ChIJ_pai_mock_1",
-        google_maps_url="https://maps.google.com/?q=Pai+Northern+Thai+Kitchen",
-        price_tier=2,
-        rating=4.5,
-        cuisine_tags=["Thai", "Northern Thai", "Southeast Asian"],
-        vibe="Busy, trendy spot with authentic Northern Thai flavors",
-        review=Review(
-            summary="Khao soi is the star - rich curry with crispy noodles. Lines are long but worth it.",
-            recommended_dishes=["Khao Soi", "Pad Thai", "Thai Iced Tea"],
-            source_url="https://reddit.com/r/askTO",
-            source_type="reddit",
-            sentiment_score=0.85,
-        ),
-        buzz_score=14.2,
-        sentiment_score=9.2,
-        viral_score=7.5,
-        total_mentions=15,
-        sources=["Reddit", "BlogTO"],
-        is_trending=True,
-    ),
-    RestaurantResponse(
-        id="seven-lives-tacos",
-        name="Seven Lives Tacos y Mariscos",
-        slug="seven-lives-tacos",
-        address="69 Kensington Ave, Toronto, ON M5T 2K2",
-        latitude=43.6543,
-        longitude=-79.4005,
-        google_place_id="ChIJ_seven_mock_2",
-        google_maps_url="https://maps.google.com/?q=Seven+Lives+Tacos",
-        price_tier=1,
-        rating=4.7,
-        cuisine_tags=["Mexican", "Seafood", "Tacos", "Baja-style"],
-        vibe="Casual, no-frills taco counter in Kensington Market",
-        review=Review(
-            summary="Best fish tacos in Toronto. Fresh, crispy, perfectly seasoned. Cash only!",
-            recommended_dishes=["Gobernador Taco", "Fish Taco", "Shrimp Taco"],
-            source_url="https://reddit.com/r/FoodToronto",
-            source_type="reddit",
-            sentiment_score=0.92,
-        ),
-        buzz_score=12.7,
-        sentiment_score=9.7,
-        viral_score=6.8,
-        total_mentions=12,
-        sources=["Reddit"],
-        is_trending=True,
-    ),
-    RestaurantResponse(
-        id="ramen-isshin",
-        name="Ramen Isshin",
-        slug="ramen-isshin",
-        address="421 College St, Toronto, ON M5T 1T1",
-        latitude=43.6598,
-        longitude=-79.3801,
-        google_place_id="ChIJ_ramen_mock_3",
-        google_maps_url="https://maps.google.com/?q=Ramen+Isshin",
-        price_tier=2,
-        rating=4.4,
-        cuisine_tags=["Japanese", "Ramen", "Noodles"],
-        vibe="Cozy ramen shop with rich tonkotsu broth",
-        review=Review(
-            summary="20-hour tonkotsu broth with perfectly cooked chashu. Black garlic oil is a must.",
-            recommended_dishes=["Tonkotsu Ramen", "Black Garlic Ramen", "Gyoza"],
-            source_url="https://reddit.com/r/askTO",
-            source_type="reddit",
-            sentiment_score=0.88,
-        ),
-        buzz_score=11.2,
-        sentiment_score=9.1,
-        viral_score=5.5,
-        total_mentions=10,
-        sources=["Reddit", "Yelp"],
-    ),
-    RestaurantResponse(
-        id="pizzeria-libretto",
-        name="Pizzeria Libretto",
-        slug="pizzeria-libretto",
-        address="221 Ossington Ave, Toronto, ON M6J 2Z8",
-        latitude=43.6487,
-        longitude=-79.4209,
-        google_place_id="ChIJ_pizza_mock_4",
-        google_maps_url="https://maps.google.com/?q=Pizzeria+Libretto",
-        price_tier=2,
-        rating=4.5,
-        cuisine_tags=["Italian", "Pizza", "Neapolitan"],
-        vibe="Trendy Neapolitan pizza spot with wood-fired oven",
-        review=Review(
-            summary="Authentic Neapolitan pizza with blistered, chewy crust. Margherita is perfection.",
-            recommended_dishes=["Margherita", "Salsiccia", "Burrata"],
-            source_url="https://torontolife.com",
-            source_type="toronto_life",
-            sentiment_score=0.82,
-        ),
-        buzz_score=10.8,
-        sentiment_score=9.0,
-        viral_score=4.5,
-        total_mentions=8,
-        sources=["Reddit", "Toronto Life"],
-    ),
-    RestaurantResponse(
-        id="miku-toronto",
-        name="Miku Toronto",
-        slug="miku-toronto",
-        address="10 Bay St, Toronto, ON M5J 2R8",
-        latitude=43.6418,
-        longitude=-79.3768,
-        google_place_id="ChIJ_miku_mock_5",
-        google_maps_url="https://maps.google.com/?q=Miku+Toronto",
-        price_tier=4,
-        rating=4.6,
-        cuisine_tags=["Japanese", "Sushi", "Aburi", "Omakase"],
-        vibe="Upscale waterfront sushi with aburi (flame-seared) specialty",
-        review=Review(
-            summary="Stunning waterfront views and exquisite aburi sushi. Special occasion worthy.",
-            recommended_dishes=["Aburi Salmon Oshi", "Ebi Oshi", "Omakase"],
-            source_url="https://torontolife.com",
-            source_type="toronto_life",
-            sentiment_score=0.9,
-        ),
-        buzz_score=8.3,
-        sentiment_score=9.4,
-        viral_score=3.2,
-        total_mentions=5,
-        sources=["Toronto Life"],
-    ),
-    RestaurantResponse(
-        id="lahore-tikka-house",
-        name="Lahore Tikka House",
-        slug="lahore-tikka-house",
-        address="1365 Gerrard St E, Toronto, ON M4L 1Z3",
-        latitude=43.6623,
-        longitude=-79.3225,
-        google_place_id="ChIJ_lahore_mock_6",
-        google_maps_url="https://maps.google.com/?q=Lahore+Tikka+House",
-        price_tier=1,
-        rating=4.3,
-        cuisine_tags=["Pakistani", "Indian", "Halal", "Curry"],
-        vibe="No-frills Pakistani institution on Gerrard. Late-night favorite.",
-        review=Review(
-            summary="Legendary butter chicken and naan. An institution for a reason.",
-            recommended_dishes=["Butter Chicken", "Seekh Kebab", "Garlic Naan"],
-            source_url="https://reddit.com/r/askTO",
-            source_type="reddit",
-            sentiment_score=0.87,
-        ),
-        buzz_score=9.5,
-        sentiment_score=9.3,
-        viral_score=5.0,
-        total_mentions=7,
-        sources=["Reddit"],
-    ),
-    RestaurantResponse(
-        id="banh-mi-boys",
-        name="Banh Mi Boys",
-        slug="banh-mi-boys",
-        address="392 Queen St W, Toronto, ON M5V 2A8",
-        latitude=43.6489,
-        longitude=-79.3960,
-        google_place_id="ChIJ_banh_mock_7",
-        google_maps_url="https://maps.google.com/?q=Banh+Mi+Boys",
-        price_tier=1,
-        rating=4.4,
-        cuisine_tags=["Vietnamese", "Korean", "Fusion", "Sandwiches"],
-        vibe="Hip fusion banh mi spot with Korean twists",
-        review=Review(
-            summary="Creative fusion banh mi with Korean-inspired fillings. Kimchi fries are addictive.",
-            recommended_dishes=["Korean Fried Chicken Banh Mi", "Kimchi Fries", "Pork Belly Bao"],
-            source_url="https://blogto.com",
-            source_type="blogto",
-            sentiment_score=0.78,
-        ),
-        buzz_score=9.8,
-        sentiment_score=8.7,
-        viral_score=5.5,
-        total_mentions=9,
-        sources=["Reddit", "BlogTO"],
-    ),
-    RestaurantResponse(
-        id="campechano",
-        name="Campechano",
-        slug="campechano",
-        address="184 Augusta Ave, Toronto, ON M5T 2L4",
-        latitude=43.6534,
-        longitude=-79.4012,
-        google_place_id="ChIJ_campechano_mock_8",
-        google_maps_url="https://maps.google.com/?q=Campechano",
-        price_tier=1,
-        rating=4.5,
-        cuisine_tags=["Mexican", "Tacos", "Street Food"],
-        vibe="Authentic taqueria with house-made tortillas",
-        review=Review(
-            summary="No-frills authentic tacos. Carnitas and suadero are the standouts.",
-            recommended_dishes=["Carnitas", "Suadero", "Al Pastor"],
-            source_url="https://reddit.com/r/FoodToronto",
-            source_type="reddit",
-            sentiment_score=0.84,
-        ),
-        buzz_score=8.1,
-        sentiment_score=8.8,
-        viral_score=4.2,
-        total_mentions=6,
-        sources=["Reddit"],
-    ),
-]
 
 
 # =============================================================================
@@ -427,73 +205,6 @@ def db_row_to_response(row: dict) -> RestaurantResponse:
         is_new=row.get("is_new", False),
         is_trending=row.get("is_trending", False),
     )
-
-
-def filter_mock_data(
-    query: Optional[str],
-    price_min: Optional[int],
-    price_max: Optional[int],
-    cuisine: Optional[List[str]],
-    sort_by: SortBy,
-    sort_order: SortOrder,
-) -> List[RestaurantResponse]:
-    """Filter and sort mock data."""
-    results = MOCK_RESTAURANTS.copy()
-
-    # Price filter
-    if price_min:
-        results = [r for r in results if r.price_tier >= price_min]
-    if price_max:
-        results = [r for r in results if r.price_tier <= price_max]
-
-    # Cuisine filter
-    if cuisine:
-        cuisine_lower = [c.lower() for c in cuisine]
-        results = [
-            r for r in results
-            if any(tag.lower() in cuisine_lower for tag in r.cuisine_tags)
-        ]
-
-    # Simple text search
-    if query:
-        q_lower = query.lower()
-        scored = []
-        for r in results:
-            score = 0
-            if q_lower in r.name.lower():
-                score += 10
-            if r.vibe and q_lower in r.vibe.lower():
-                score += 5
-            if any(q_lower in tag.lower() for tag in r.cuisine_tags):
-                score += 5
-            if r.review and q_lower in r.review.summary.lower():
-                score += 3
-            if score > 0:
-                scored.append((score, r))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = [r for _, r in scored]
-    
-    # Sorting
-    reverse = sort_order == SortOrder.DESC
-    
-    if sort_by == SortBy.BUZZ:
-        results.sort(key=lambda r: r.buzz_score, reverse=reverse)
-    elif sort_by == SortBy.SENTIMENT:
-        results.sort(key=lambda r: r.sentiment_score, reverse=reverse)
-    elif sort_by == SortBy.VIRAL:
-        results.sort(key=lambda r: r.viral_score, reverse=reverse)
-    elif sort_by == SortBy.RATING:
-        results.sort(key=lambda r: r.rating, reverse=reverse)
-    elif sort_by == SortBy.PRICE:
-        results.sort(key=lambda r: r.price_tier, reverse=reverse)
-    elif sort_by == SortBy.NAME:
-        results.sort(key=lambda r: r.name.lower(), reverse=reverse)
-    elif sort_by == SortBy.MENTIONS:
-        results.sort(key=lambda r: r.total_mentions, reverse=reverse)
-    
-    return results
-
 
 # =============================================================================
 # ENDPOINTS

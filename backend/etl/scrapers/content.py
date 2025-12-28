@@ -20,7 +20,7 @@ from pathlib import Path
 import feedparser
 from dateutil import parser as date_parser
 from dotenv import load_dotenv
-from models import SourceType
+from shared.models import SourceType
 import trafilatura
 
 load_dotenv()
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# MODELS (or import from models.py)
+# MODELS (or import from shared.models.py)
 # =============================================================================
 
 @dataclass

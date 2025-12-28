@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 from groq import Groq
 from dotenv import load_dotenv
 
-from models import (
+from shared.models import (
     ExtractedRestaurant,
     SentimentAnalysis,
     SentimentLabel,

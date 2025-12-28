@@ -12,7 +12,7 @@ from typing import Optional, List
 import googlemaps
 from dotenv import load_dotenv
 
-from models import GooglePlaceData, ExtractedRestaurant
+from shared.models import GooglePlaceData, ExtractedRestaurant
 
 load_dotenv()
 

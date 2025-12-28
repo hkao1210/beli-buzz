@@ -1,9 +1,9 @@
 """
 Pydantic schemas for Belly-Buzz API.
-Re-exports from models for backwards compatibility.
+Re-exports from shared.models for backwards compatibility.
 """
 
-from models import (
+from shared.models import (
     # API Response Models
     Restaurant as RestaurantDB,
     RestaurantResponse as Restaurant,

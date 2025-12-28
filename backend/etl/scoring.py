@@ -7,7 +7,8 @@ import math
 import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
-from models import RestaurantMetrics
+from shared.models import RestaurantMetrics
+from shared.models import SocialMention
 
 logger = logging.getLogger(__name__)
 

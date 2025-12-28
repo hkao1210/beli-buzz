@@ -11,7 +11,7 @@ from typing import List, Optional
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from models import ExtractedRestaurant, Restaurant
+from shared.models import ExtractedRestaurant, Restaurant
 
 load_dotenv()
 
