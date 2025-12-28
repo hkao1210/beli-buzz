@@ -70,7 +70,7 @@ BLOG_FEEDS: List[FeedConfig] = [
     FeedConfig(
         name="BlogTO",
         feed_url="https://feeds.feedburner.com/blogto",
-        food_filter=True,  # General feed, filter for food
+        food_filter=True,  
     ),
     FeedConfig(
         name="Streets of Toronto - Food",
@@ -113,7 +113,7 @@ REDDIT_FEEDS: List[FeedConfig] = [
 # SCRAPER
 # =============================================================================
 
-class BlogScraper:
+class ContentScraper:
     """Scrapes Toronto food blogs using RSS feeds + trafilatura."""
 
     FOOD_KEYWORDS = frozenset({
@@ -221,15 +221,12 @@ class BlogScraper:
                 content = self._clean_html(raw_content)
                 posted_at = self._parse_date(entry)
 
-                # Skip old entries
                 if not self._is_recent(posted_at, days_back):
                     continue
 
-                # Filter for food if needed
                 if config.food_filter and not self._is_food_related(title, content):
                     continue
 
-                # Optionally fetch full article text
                 if fetch_full_text and len(content) < 500 and link:
                     full_text = self.extract_full_article(link)
                     if full_text:
@@ -334,7 +331,6 @@ class BlogScraper:
         """Scrape all sources (blogs + Reddit)."""
         results = []
 
-        # Blogs
         results.extend(
             self.scrape_blogs(
                 limit_per_feed=blog_limit,
@@ -343,7 +339,6 @@ class BlogScraper:
             )
         )
 
-        # Reddit
         results.extend(
             self.scrape_reddit(
                 limit_per_feed=reddit_limit,
@@ -355,9 +350,6 @@ class BlogScraper:
         return results
 
 
-# =============================================================================
-# CLI
-# =============================================================================
 
 def _serialize_item(item: ScrapedContent) -> dict:
     d = asdict(item)
@@ -368,9 +360,7 @@ def _serialize_item(item: ScrapedContent) -> dict:
                 d[k] = d[k].isoformat()
             except Exception:
                 d[k] = str(d[k])
-    # source_type is an Enum
     if isinstance(d.get("source_type"), dict):
-        # asdict on Enum may produce a dict in some versions; normalize
         d["source_type"] = d["source_type"].get("value") if d["source_type"].get("value") else str(d["source_type"])
     else:
         d["source_type"] = getattr(item.source_type, "value", str(item.source_type))
@@ -411,7 +401,7 @@ def main(argv=None):
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO), format="%(asctime)s [%(levelname)s] %(message)s")
 
-    scraper = BlogScraper()
+    scraper = ContentScraper()
     results = []
 
     if args.source in ("blogs", "all"):
