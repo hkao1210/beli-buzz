@@ -8,19 +8,20 @@ from .enums import SourceType, SentimentLabel
 from .extraction import ExtractedRestaurant, SentimentAnalysis
 from .restaurant import Restaurant
 from .metrics import RestaurantMetrics
-from scrapedcontent import ScrapedContent
+from .scrapedcontent import ScrapedContent
+from .mention import SocialMention
 
 __all__ = [
     # Enums
     "SourceType",
     "SentimentLabel",
     # Social
-    "RedditPost",
+    "Restaurant",
+    "RestaurantMetrics",
+    "SocialMention",
     "ScrapedContent",
     # Extraction
     "ExtractedRestaurant",
     "SentimentAnalysis",
-    # Scoring
-    "RestaurantScores",
     # Database
 ]

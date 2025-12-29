@@ -1,221 +1,107 @@
 """
-Google Places Enrichment
-========================
-Enriches restaurant data with Google Places API.
+Google Places Enrichment (New Places V1 API)
+============================================
+Enriches restaurant data using the google-maps-places library.
 """
 
 import os
-import re
 import logging
-from typing import Optional, List
-
-import googlemaps
+from typing import Optional, List, Dict
+from google.maps import places_v1
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from shared.models import GooglePlaceData, ExtractedRestaurant
+from shared.models import ExtractedRestaurant
 
 load_dotenv()
-
 logger = logging.getLogger(__name__)
 
+class GooglePlaceDTO(BaseModel):
+    """Internal DTO for enrichment results."""
+    place_id: str
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+    rating: Optional[float] = None
+    reviews_count: Optional[int] = None
+    price_level: Optional[int] = None
+    google_maps_url: str
+    photo_url: Optional[str] = None
 
 class GooglePlacesEnricher:
-    """
-    Enriches restaurant data using Google Places API.
-    
-    Requires GOOGLE_MAPS_API_KEY environment variable.
-    """
+    """Uses the modern google-maps-places client for restaurant enrichment."""
     
     def __init__(self):
+        self.api_key = os.getenv("GOOGLE_MAPS_API_KEY")
         self.client = self._init_client()
         
-    def _init_client(self) -> Optional[googlemaps.Client]:
-        """Initialize Google Maps client."""
-        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
-        if not api_key:
+    def _init_client(self) -> Optional[places_v1.PlacesClient]:
+        if not self.api_key:
             logger.warning("GOOGLE_MAPS_API_KEY not set")
             return None
-        
         try:
-            client = googlemaps.Client(key=api_key)
-            logger.info("Google Maps client initialized")
-            return client
+            return places_v1.PlacesClient(client_options={"api_key": self.api_key})
         except Exception as e:
-            logger.error(f"Failed to initialize Google Maps: {e}")
+            logger.error(f"Failed to initialize Places V1 client: {e}")
             return None
 
-    def find_place(
-        self,
-        restaurant_name: str,
-        city: str = "Toronto",
-    ) -> Optional[GooglePlaceData]:
-        """
-        Find a restaurant on Google Places.
-        
-        Args:
-            restaurant_name: Name of the restaurant
-            city: City to search in (default: Toronto)
-            
-        Returns:
-            GooglePlaceData or None if not found
-        """
-        if not self.client:
-            logger.warning("Google Maps client not available")
-            return None
+    def find_place(self, restaurant_name: str, city: str = "Toronto") -> Optional[GooglePlaceDTO]:
+        """Finds a restaurant using the modern search_text (V1) method."""
+        if not self.client: return None
         
         try:
-            query = f"{restaurant_name} restaurant {city}"
+            # The New API requires a Field Mask in the metadata for billing/performance
+            field_mask = "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.googleMapsUri,places.photos"
+            metadata = [("x-goog-fieldmask", field_mask)]
+
+            # Request structure for the new SearchText endpoint
+            request = {
+                "text_query": f"{restaurant_name} {city}",
+                "max_result_count": 1,
+                "location_bias": {
+                    "circle": {
+                        "center": {"latitude": 43.6532, "longitude": -79.3832}, # Toronto
+                        "radius": 10000.0
+                    }
+                }
+            }
+
+            response = self.client.search_text(request=request, metadata=metadata)
             
-            result = self.client.find_place(
-                input=query,
-                input_type="textquery",
-                fields=[
-                    "place_id",
-                    "name",
-                    "formatted_address",
-                    "geometry",
-                    "price_level",
-                    "rating",
-                    "user_ratings_total",
-                    "photos",
-                    "types",
-                ]
-            )
-            
-            if not result.get("candidates"):
-                logger.warning(f"No Google Places result for: {restaurant_name}")
+            if not response.places:
+                logger.warning(f"No Google result for: {restaurant_name}")
                 return None
             
-            place = result["candidates"][0]
-            place_id = place["place_id"]
+            place = response.places[0]
             
-            # Get photo URL if available
-            photo_ref = None
+            # Extract photo URL if available
             photo_url = None
-            if place.get("photos"):
-                photo_ref = place["photos"][0].get("photo_reference")
-                if photo_ref:
-                    photo_url = self._get_photo_url(photo_ref)
-            
-            address = place.get("formatted_address", "")
+            if place.photos:
+                photo_name = place.photos[0].name # format: places/{id}/photos/{pid}
+                photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=400&key={self.api_key}"
 
-            return GooglePlaceData(
-                place_id=place_id,
-                name=place.get("name", restaurant_name),
-                address=address,
-                city=city,
-                latitude=place["geometry"]["location"]["lat"],
-                longitude=place["geometry"]["location"]["lng"],
-                price_level=place.get("price_level"),
-                rating=place.get("rating"),
-                reviews_count=place.get("user_ratings_total"),
-                google_maps_url=f"https://www.google.com/maps/place/?q=place_id:{place_id}",
-                photo_reference=photo_ref,
-                photo_url=photo_url,
-                types=place.get("types", []),
+            return GooglePlaceDTO(
+                place_id=place.id,
+                name=place.display_name.text if place.display_name else restaurant_name,
+                address=place.formatted_address,
+                latitude=place.location.latitude,
+                longitude=place.location.longitude,
+                rating=place.rating,
+                reviews_count=place.user_rating_count,
+                price_level=int(place.price_level) if place.price_level else None,
+                google_maps_url=place.google_maps_uri,
+                photo_url=photo_url
             )
             
         except Exception as e:
-            logger.error(f"Google Places lookup failed for {restaurant_name}: {e}")
+            logger.error(f"New Places API lookup failed for {restaurant_name}: {e}")
             return None
-    
-    def _get_photo_url(
-        self,
-        photo_reference: str,
-        max_width: int = 400,
-    ) -> Optional[str]:
-        """Generate Google Places photo URL."""
-        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
-        if not photo_reference or not api_key:
-            return None
-        
-        return (
-            f"https://maps.googleapis.com/maps/api/place/photo"
-            f"?maxwidth={max_width}"
-            f"&photo_reference={photo_reference}"
-            f"&key={api_key}"
-        )
-    
-    def enrich_extracted(
-        self,
-        extracted: ExtractedRestaurant,
-        city: str = "Toronto",
-    ) -> Optional[GooglePlaceData]:
-        """
-        Enrich an extracted restaurant with Google Places data.
-        
-        Args:
-            extracted: Extracted restaurant data from LLM
-            city: City to search in
-            
-        Returns:
-            GooglePlaceData or None
-        """
-        return self.find_place(extracted.name, city)
-    
-    def batch_enrich(
-        self,
-        restaurants: List[ExtractedRestaurant],
-        city: str = "Toronto",
-    ) -> dict[str, Optional[GooglePlaceData]]:
-        """
-        Enrich multiple restaurants.
-        
-        Args:
-            restaurants: List of extracted restaurants
-            city: City to search in
-            
-        Returns:
-            Dict mapping restaurant name to GooglePlaceData
-        """
-        results = {}
-        
-        for restaurant in restaurants:
-            place_data = self.enrich_extracted(restaurant, city)
-            results[restaurant.name] = place_data
-            
-            if place_data:
-                logger.info(f"Enriched: {restaurant.name} -> {place_data.address}")
-            else:
-                logger.warning(f"Failed to enrich: {restaurant.name}")
-        
-        return results
 
-
-# Singleton instance
 _enricher: Optional[GooglePlacesEnricher] = None
 
-
 def get_enricher() -> GooglePlacesEnricher:
-    """Get or create the singleton enricher."""
     global _enricher
     if _enricher is None:
         _enricher = GooglePlacesEnricher()
     return _enricher
-
-
-# =============================================================================
-# CLI for testing
-# =============================================================================
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    
-    enricher = GooglePlacesEnricher()
-    
-    if enricher.client:
-        # Test with known Toronto restaurants
-        test_restaurants = [
-            "Pai Northern Thai Kitchen",
-            "Seven Lives Tacos",
-            "Ramen Isshin",
-        ]
-        
-        for name in test_restaurants:
-            place = enricher.find_place(name)
-            if place:
-                print(f"\n{place.name}")
-                print(f"  Address: {place.address}")
-                print(f"  Rating: {place.rating} ({place.reviews_count} reviews)")
-                print(f"  Price Level: {place.price_level}")
-                print(f"  Coords: ({place.latitude}, {place.longitude})")
-
