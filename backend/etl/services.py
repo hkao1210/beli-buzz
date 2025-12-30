@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from embeddings import EmbeddingService
+from shared.embeddings.embeddings import EmbeddingService
 from .scrapers.content import ContentScraper
 from .llm.extractor import RestaurantExtractor
 from .enrichment import GooglePlacesEnricher

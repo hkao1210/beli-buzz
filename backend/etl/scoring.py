@@ -12,17 +12,14 @@ from shared.models import SocialMention
 
 logger = logging.getLogger(__name__)
 
-def calculate_metrics(
-    mentions: List[SocialMention], 
-    google_rating: Optional[float] = 0.0,
-    google_reviews: int = 0
-) -> Tuple[float, float]:
+def calculate_metrics(mentions: List[SocialMention]) -> Tuple[float, float]:
     """
     Consolidated scoring logic.
     Returns (buzz_score, sentiment_score).
     """
+    # No mentions -> zero buzz, neutral sentiment (5.0 on 0-10 scale)
     if not mentions:
-        return 0.0, google_rating or 0.0
+        return 0.0, 5.0
 
     now = datetime.now()
     total_engagement = 0.0
@@ -51,27 +48,25 @@ def calculate_metrics(
             sentiment_count += 1
 
     # 2. Calculate Final Buzz (0-100 Scale for UI)
-    # Buzz = (Log of total volume) + (Decayed social engagement) + (Google Review Weight)
+    # Buzz = (Log of total volume) + (Decayed social engagement)
     volume_bonus = math.log1p(len(mentions)) * 10
-    google_bonus = (google_rating or 0) * 2 # Google adds a baseline quality
     
-    buzz_score = volume_bonus + total_engagement + google_bonus
+    buzz_score = volume_bonus + total_engagement
     buzz_score = min(round(buzz_score, 1), 100.0)
 
     # 3. Calculate Final Sentiment (0-10 Scale)
     # Average LLM sentiment (usually -1 to 1) mapped to 0-10
-    raw_sentiment = (sentiment_sum / sentiment_count) if sentiment_count > 0 else 0.5
+    raw_sentiment = (sentiment_sum / sentiment_count) if sentiment_count > 0 else 0.0
     sentiment_score = round((raw_sentiment + 1) * 5, 1)
 
     return buzz_score, sentiment_score
 
 def update_metrics_object(
     metrics: RestaurantMetrics, 
-    mentions: List[SocialMention],
-    google_rating: Optional[float] = 0.0
+    mentions: List[SocialMention]
 ) -> RestaurantMetrics:
     """Updates the metrics model with simplified logic."""
-    buzz, sentiment = calculate_metrics(mentions, google_rating)
+    buzz, sentiment = calculate_metrics(mentions)
     
     metrics.buzz_score = buzz
     metrics.sentiment_score = sentiment

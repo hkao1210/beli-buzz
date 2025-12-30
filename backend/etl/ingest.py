@@ -1,9 +1,6 @@
-import os
 import re
-import asyncio
 import logging
-from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 
 from dotenv import load_dotenv
 from etl.db import get_supabase
@@ -11,10 +8,8 @@ from shared.models import (
     Restaurant,
     RestaurantMetrics,
     SocialMention,
-    SourceType,
-    ScrapedContent,
 )
-from embeddings import get_embedding_service
+from shared.embeddings.embeddings import get_embedding_service
 from .scrapers.content import ContentScraper
 from .llm.extractor import RestaurantExtractor
 from .enrichment import GooglePlacesEnricher
@@ -44,10 +39,6 @@ def price_hint_to_tier(price_hint: Optional[str], google_price: Optional[int]) -
     if any(k in hint for k in ["$$$", "upscale"]): return 3
     if any(k in hint for k in ["$$", "moderate"]): return 2
     return 1
-
-# =============================================================================
-# DATABASE OPERATIONS (Restored & Fixed)
-# =============================================================================
 
 def upsert_restaurant_core(supabase, restaurant: Restaurant) -> Optional[str]:
     """Upserts identity and returns UUID."""
@@ -85,7 +76,7 @@ async def run_pipeline(limit: int = 50):
     queue: Dict[str, Dict] = {}
 
     for item in raw_content:
-        extracted_list, _ = extractor.process_content(item)
+        extracted_list, sentiment = extractor.process_content(item)
         for ext in extracted_list:
             place = enricher.find_place(ext.name)
             key = place.place_id if place else ext.name
@@ -102,16 +93,25 @@ async def run_pipeline(limit: int = 50):
                 raw_text=item.raw_text[:3000],
                 reddit_score=item.reddit_score,
                 reddit_num_comments=item.reddit_num_comments,
-                posted_at=item.posted_at
+                posted_at=item.posted_at,
+                sentiment_score=sentiment.overall_score if sentiment else 0.0,
+                sentiment_label=sentiment.label if sentiment else None,
+                vibe_extracted=ext.vibe,
+                dishes_mentioned=ext.recommended_dishes or []
             )
             queue[key]["mentions"].append(mention)
 
     for key, data in queue.items():
         try:
             ext, place, mentions = data["ext"], data["place"], data["mentions"]
-            buzz, sentiment = calculate_metrics(mentions, google_rating=place.rating if place else 0)
+            sentiment = None
+            for item in raw_content:
+                extracted_list, sent = extractor.process_content(item)
+                if sent:
+                    sentiment = sent
+                    break
+            buzz, sentiment = calculate_metrics(mentions)
 
-            # Build Restaurant with explicit price_tier to satisfy Pylance
             restaurant = Restaurant(
                 name=place.name if place else ext.name,
                 slug=create_slug(place.name if place else ext.name),
@@ -121,7 +121,6 @@ async def run_pipeline(limit: int = 50):
                 price_tier=price_hint_to_tier(ext.price_hint, place.price_level if place else None),
                 google_place_id=place.place_id if place else None,
                 google_maps_url=place.google_maps_url if place else None,
-                photo_url=place.photo_url if place else None,
                 vibe=ext.vibe,
                 embedding=embedder.embed_text(f"{ext.name} {ext.vibe}")
             )
