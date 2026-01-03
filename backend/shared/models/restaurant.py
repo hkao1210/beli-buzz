@@ -12,8 +12,8 @@ class Restaurant(BaseModel):
     longitude: float = 0.0
     price_tier: int = Field(2, ge=1, le=4)
     vibe: Optional[str] = None
+    cuisine_tags: List[str] = Field(default_factory=list)
     
-    # Essential Google Info
     google_place_id: Optional[str] = None
     google_maps_url: Optional[str] = None
     
