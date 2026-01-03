@@ -122,6 +122,7 @@ async def run_pipeline(limit: int = 50):
                 google_place_id=place.place_id if place else None,
                 google_maps_url=place.google_maps_url if place else None,
                 vibe=ext.vibe,
+                cuisine_tags=ext.cuisine_tags,
                 embedding=embedder.embed_text(f"{ext.name} {ext.vibe}")
             )
 
