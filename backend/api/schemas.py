@@ -16,6 +16,7 @@ class RestaurantResponse(BaseModel):
     google_maps_url: Optional[str]
     price_tier: int
     vibe: Optional[str]
+    cuisine_tags: List[str]
     buzz_score: float
     sentiment_score: float
     total_mentions: int
