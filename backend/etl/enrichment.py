@@ -30,6 +30,7 @@ class GooglePlacesEnricher:
             return None
         
         try:
+            logger.info(f"[enricher] Starting find_place for: {restaurant_name}")
             # Request only the minimal fields (Basic SKU): id, displayName, formattedAddress, location, priceLevel, googleMapsUri
             field_mask = "places.id,places.displayName,places.formattedAddress,places.location,places.priceLevel,places.googleMapsUri"
             
@@ -45,12 +46,16 @@ class GooglePlacesEnricher:
                 }
             }
             
+            logger.info(f"[enricher] Making Google Places API call...")
             response = self.client.search_text(request=request, metadata=[("x-goog-fieldmask", field_mask)])
+            logger.info(f"[enricher] API response received")
             
             if not response.places:
+                logger.info(f"[enricher] No places found for {restaurant_name}")
                 return None
             
             place = response.places[0]
+            logger.info(f"[enricher] Found place: {place.display_name.text if place.display_name else restaurant_name}")
 
             return GooglePlaceDTO(
                 place_id=place.id,
@@ -62,7 +67,7 @@ class GooglePlacesEnricher:
                 google_maps_url=place.google_maps_uri,
             )
         except Exception as e:
-            logger.error(f"Google Enrichment failed for {restaurant_name}: {e}")
+            logger.error(f"[enricher] Google Enrichment failed for {restaurant_name}: {e}")
             return None
 
 _enricher = None
