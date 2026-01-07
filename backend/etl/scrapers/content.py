@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 import feedparser
+import requests
 from dateutil import parser as date_parser
 from dotenv import load_dotenv
 from shared.models import SourceType
@@ -178,7 +179,14 @@ class ContentScraper:
         results = []
 
         try:
-            feed = feedparser.parse(config.feed_url)
+            # Fetch RSS feed with proper User-Agent (Reddit blocks empty UA)
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(config.feed_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            feed = feedparser.parse(response.content)
 
             if feed.bozo and not feed.entries:
                 logger.warning(f"Failed to parse {config.name}: {feed.bozo_exception}")
